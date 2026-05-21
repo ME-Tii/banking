@@ -169,20 +169,20 @@ function handleAPI(method, urlPath, body, data) {
 
   // Version info (no auth required)
   if (method === "GET" && parts.join("/") === "api/version") {
+    const gh = "https://github.com/ME-Tii/banking/releases/download/v" + PKG.version
     return [200, {
       version: PKG.version,
       downloadUrl: "/",
       publicUrl: process.env.PUBLIC_URL || PKG.publicUrl || "",
-      downloadBase: process.env.DOWNLOAD_HOST || PKG.downloadHost || "",
       downloads: {
-        mac: "/release/mac/Banking%20System-" + PKG.version + ".dmg",
-        win: "/release/win/Banking%20System%20" + PKG.version + ".exe",
-        "linux-x64": "/release/linux/x64/Banking%20System-" + PKG.version + ".AppImage",
-        "linux-arm64": "/release/linux/arm64/Banking%20System-" + PKG.version + "-arm64.AppImage",
+        mac: gh + "/Banking.System-" + PKG.version + ".dmg",
+        win: gh + "/Banking.System." + PKG.version + ".exe",
+        "linux-x64": gh + "/Banking.System-" + PKG.version + ".AppImage",
+        "linux-arm64": gh + "/Banking.System-" + PKG.version + "-arm64.AppImage",
       },
       downloadDeb: {
-        "linux-x64": "/release/linux/x64/banking-system_" + PKG.version + "_amd64.deb",
-        "linux-arm64": "/release/linux/arm64/banking-system_" + PKG.version + "_arm64.deb",
+        "linux-x64": gh + "/banking-system_" + PKG.version + "_amd64.deb",
+        "linux-arm64": gh + "/banking-system_" + PKG.version + "_arm64.deb",
       },
     }]
   }

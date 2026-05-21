@@ -29,8 +29,8 @@
             <i class="bi bi-apple display-3 mb-3 d-block"></i>
             <h5 class="card-title">macOS</h5>
             <p class="text-muted small">Intel & Apple Silicon</p>
-            <a href="/release/mac/Banking%20System-1.2.0.dmg" class="btn btn-dark w-100">
-              <i class="bi bi-download"></i> DMG <span class="badge bg-light text-dark version-badge">v1.2.0</span>
+              <a href="https://github.com/ME-Tii/banking/releases/download/v1.2.0/Banking.System-1.2.0.dmg" class="btn btn-dark w-100 os-link" data-os="mac">
+                <i class="bi bi-download"></i> DMG <span class="badge bg-light text-dark version-badge">v1.2.0</span>
             </a>
             <div class="alert alert-warning small mt-2 mb-0 py-1 px-2">
               <strong>macOS unsignierte App:</strong><br>
@@ -49,8 +49,8 @@
             <i class="bi bi-microsoft display-3 mb-3 d-block"></i>
             <h5 class="card-title">Windows</h5>
             <p class="text-muted small">x64 (portabel)</p>
-            <a href="/release/win/Banking%20System%201.2.0.exe" class="btn btn-primary w-100">
-              <i class="bi bi-download"></i> EXE <span class="badge bg-light text-primary version-badge">v1.2.0</span>
+              <a href="https://github.com/ME-Tii/banking/releases/download/v1.2.0/Banking.System.1.2.0.exe" class="btn btn-primary w-100 os-link" data-os="win">
+                <i class="bi bi-download"></i> EXE <span class="badge bg-light text-primary version-badge">v1.2.0</span>
             </a>
             <div class="alert alert-warning small mt-2 mb-0 py-1 px-2">
               <strong>Windows SmartScreen:</strong> Auf "Trotzdem ausführen" klicken — die App ist nicht signiert.
@@ -67,10 +67,10 @@
             <h5 class="card-title">Linux x64</h5>
             <p class="text-muted small">Intel / AMD 64-bit</p>
             <div class="d-grid gap-2">
-              <a href="/release/linux/x64/Banking%20System-1.2.0.AppImage" class="btn btn-success">
+              <a href="https://github.com/ME-Tii/banking/releases/download/v1.2.0/Banking.System-1.2.0.AppImage" class="btn btn-success os-link" data-os="linux-x64">
                 <i class="bi bi-download"></i> AppImage <span class="badge bg-light text-success version-badge">v1.2.0</span>
               </a>
-              <a href="/release/linux/x64/banking-system_1.2.0_amd64.deb" class="btn btn-outline-success">
+              <a href="https://github.com/ME-Tii/banking/releases/download/v1.2.0/banking-system_1.2.0_amd64.deb" class="btn btn-outline-success os-link" data-os="linux-x64-deb">
                 <i class="bi bi-download"></i> .deb <span class="badge bg-light text-success version-badge">v1.2.0</span>
               </a>
             </div>
@@ -86,10 +86,10 @@
             <h5 class="card-title">Linux ARM64</h5>
             <p class="text-muted small">Raspberry Pi, ARM-basiert</p>
             <div class="d-grid gap-2">
-              <a href="/release/linux/arm64/Banking%20System-1.2.0-arm64.AppImage" class="btn btn-success">
+              <a href="https://github.com/ME-Tii/banking/releases/download/v1.2.0/Banking.System-1.2.0-arm64.AppImage" class="btn btn-success os-link" data-os="linux-arm64">
                 <i class="bi bi-download"></i> AppImage <span class="badge bg-light text-success version-badge">v1.2.0</span>
               </a>
-              <a href="/release/linux/arm64/banking-system_1.2.0_arm64.deb" class="btn btn-outline-success">
+              <a href="https://github.com/ME-Tii/banking/releases/download/v1.2.0/banking-system_1.2.0_arm64.deb" class="btn btn-outline-success os-link" data-os="linux-arm64-deb">
                 <i class="bi bi-download"></i> .deb <span class="badge bg-light text-success version-badge">v1.2.0</span>
               </a>
             </div>
@@ -106,10 +106,16 @@
     fetch("/api/version").then(r => r.json()).then(data => {
       document.querySelectorAll(".version-badge").forEach(el => el.textContent = "v" + data.version)
       document.title = "Banking System v" + data.version + " — Downloads"
-      const base = data.downloadBase || ""
-      document.querySelectorAll("a[href*='/release/']").forEach(a => {
-        const path = a.getAttribute("href").replace(/\d+\.\d+\.\d+/, data.version)
-        a.href = base + path
+      const dl = data.downloads || {}
+      const deb = data.downloadDeb || {}
+      document.querySelectorAll("a.os-link").forEach(a => {
+        const key = a.dataset.os
+        if (dl[key]) a.href = dl[key]
+        else if (deb[key]) a.href = deb[key]
+        else if (key.endsWith("-deb")) {
+          const k = key.replace("-deb", "")
+          if (deb[k]) a.href = deb[k]
+        }
       })
     }).catch(() => {})
   </script>

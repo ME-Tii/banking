@@ -3,9 +3,8 @@
   "version": "1.2.0",
   "description": "Banking desktop application",
   "author": "Thomas Seitz <thomasseitz22@gmail.com>",
-  "homepage": "https://github.com/thomasseitz/banking",
+  "homepage": "https://github.com/ME-Tii/banking",
   "publicUrl": "https://pointed-rift-counting.ngrok-free.dev",
-  "downloadHost": "https://accept-thoroughly-identifying-expand.trycloudflare.com",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
