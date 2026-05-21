@@ -1,6 +1,4 @@
-Banking System — Public URL
-Version: 1.1.0 (updated May 21, 2026)
-
-https://pointed-rift-counting.ngrok-free.dev
-
-Stop everything: pkill -f 'node server.js|ngrok http|caffeinate'
+Banking System - public URL: https://pointed-rift-counting.ngrok-free.dev
+GitHub repo:  https://github.com/ME-Tii/banking
+Downloads:    https://github.com/ME-Tii/banking/releases
+Stop server:  pkill -f 'node server.js|ngrok http|caffeinate'
