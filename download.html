@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Banking System v1.2.0 — Downloads</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    body { background: #f8f9fa; }
+    .os-card { transition: transform .15s; }
+    .os-card:hover { transform: translateY(-2px); }
+    .badge-arch { font-size: .7rem; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <div class="container py-5">
+    <div class="text-center mb-5">
+      <h1 class="display-5 fw-bold">Banking System</h1>
+      <p class="text-muted">Elektronische Desktop-Anwendung für das Banking-System</p>
+      <a href="/app" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right"></i> Zur App (Desktop)</a>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+      <!-- macOS -->
+      <div class="col-md-6 col-lg-4">
+        <div class="card os-card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <i class="bi bi-apple display-3 mb-3 d-block"></i>
+            <h5 class="card-title">macOS</h5>
+            <p class="text-muted small">Intel & Apple Silicon</p>
+            <a href="/release/mac/Banking%20System-1.2.0.dmg" class="btn btn-dark w-100">
+              <i class="bi bi-download"></i> DMG <span class="badge bg-light text-dark version-badge">v1.2.0</span>
+            </a>
+            <div class="alert alert-warning small mt-2 mb-0 py-1 px-2">
+              <strong>macOS unsignierte App:</strong><br>
+              1. DMG öffnen (Rechtsklick → "Öffnen")<br>
+              2. App in Programme verschieben<br>
+              3. Terminal: <code class="text-dark">xattr -dr com.apple.quarantine /Applications/Banking\ System.app</code>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Windows -->
+      <div class="col-md-6 col-lg-4">
+        <div class="card os-card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <i class="bi bi-microsoft display-3 mb-3 d-block"></i>
+            <h5 class="card-title">Windows</h5>
+            <p class="text-muted small">x64 (portabel)</p>
+            <a href="/release/win/Banking%20System%201.2.0.exe" class="btn btn-primary w-100">
+              <i class="bi bi-download"></i> EXE <span class="badge bg-light text-primary version-badge">v1.2.0</span>
+            </a>
+            <div class="alert alert-warning small mt-2 mb-0 py-1 px-2">
+              <strong>Windows SmartScreen:</strong> Auf "Trotzdem ausführen" klicken — die App ist nicht signiert.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linux x64 -->
+      <div class="col-md-6 col-lg-4">
+        <div class="card os-card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <i class="bi bi-linux display-3 mb-3 d-block"></i>
+            <h5 class="card-title">Linux x64</h5>
+            <p class="text-muted small">Intel / AMD 64-bit</p>
+            <div class="d-grid gap-2">
+              <a href="/release/linux/x64/Banking%20System-1.2.0.AppImage" class="btn btn-success">
+                <i class="bi bi-download"></i> AppImage <span class="badge bg-light text-success version-badge">v1.2.0</span>
+              </a>
+              <a href="/release/linux/x64/banking-system_1.2.0_amd64.deb" class="btn btn-outline-success">
+                <i class="bi bi-download"></i> .deb <span class="badge bg-light text-success version-badge">v1.2.0</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linux ARM64 -->
+      <div class="col-md-6 col-lg-4">
+        <div class="card os-card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <i class="bi bi-cpu display-3 mb-3 d-block"></i>
+            <h5 class="card-title">Linux ARM64</h5>
+            <p class="text-muted small">Raspberry Pi, ARM-basiert</p>
+            <div class="d-grid gap-2">
+              <a href="/release/linux/arm64/Banking%20System-1.2.0-arm64.AppImage" class="btn btn-success">
+                <i class="bi bi-download"></i> AppImage <span class="badge bg-light text-success version-badge">v1.2.0</span>
+              </a>
+              <a href="/release/linux/arm64/banking-system_1.2.0_arm64.deb" class="btn btn-outline-success">
+                <i class="bi bi-download"></i> .deb <span class="badge bg-light text-success version-badge">v1.2.0</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-5 text-muted small">
+      <p>Die Dateien werden direkt vom Server ausgeliefert. Keine Tracking-Drittanbieter.</p>
+    </div>
+  </div>
+  <script>
+    fetch("/api/version").then(r => r.json()).then(data => {
+      document.querySelectorAll(".version-badge").forEach(el => el.textContent = "v" + data.version)
+      document.title = "Banking System v" + data.version + " — Downloads"
+      const base = data.downloadBase || ""
+      document.querySelectorAll("a[href*='/release/']").forEach(a => {
+        const path = a.getAttribute("href").replace(/\d+\.\d+\.\d+/, data.version)
+        a.href = base + path
+      })
+    }).catch(() => {})
+  </script>
+</body>
+</html>

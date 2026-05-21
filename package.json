@@ -1,0 +1,48 @@
+{
+  "name": "banking-system",
+  "version": "1.2.0",
+  "description": "Banking desktop application",
+  "author": "Thomas Seitz <thomasseitz22@gmail.com>",
+  "homepage": "https://github.com/thomasseitz/banking",
+  "publicUrl": "https://pointed-rift-counting.ngrok-free.dev",
+  "downloadHost": "https://accept-thoroughly-identifying-expand.trycloudflare.com",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "nodemon server.js",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac --x64",
+    "dist:win": "electron-builder --win --x64",
+    "dist:linux": "electron-builder --linux --x64",
+    "dist:all": "electron-builder --win --linux --x64"
+  },
+  "build": {
+    "appId": "com.banking.system",
+    "productName": "Banking System",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "portable"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^25.0.0",
+    "nat-upnp": "^1.1.1",
+    "nodemon": "^3.1.14"
+  }
+}

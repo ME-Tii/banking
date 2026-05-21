@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Banking System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .auth-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .auth-card { width: 100%; max-width: 460px; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable::after { content: " \2195"; opacity: 0.3; }
+    th.sortable.asc::after { content: " \2191"; opacity: 1; }
+    th.sortable.desc::after { content: " \2193"; opacity: 1; }
+    .filter-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filter-row input, .filter-row select { max-width: 200px; }
+    @media print {
+      body { background: #fff !important; }
+      .navbar, .nav-tabs, .card-header, #printStatementBtn, #statementForm, .toast-container { display: none !important; }
+      .card { border: none !important; box-shadow: none !important; }
+      .card-body { padding: 0 !important; }
+      #statementOutput.d-none { display: block !important; }
+      #statementPaper { border: none !important; padding: 0 !important; }
+      #stmtEmpty { display: none !important; }
+      .container { max-width: 100% !important; }
+    }
+  </style>
+</head>
+<body class="bg-light">
+
+<!-- Auth Screen -->
+<div id="authScreen" class="auth-wrapper">
+  <div class="auth-card">
+    <div class="card shadow">
+      <div class="card-body p-4">
+        <h3 class="text-center mb-4">Banking System</h3>
+        <ul class="nav nav-pills nav-justified mb-4" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#loginPanel">Anmelden</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#registerPanel">Registrieren</button>
+          </li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="loginPanel">
+            <form id="loginForm">
+              <div class="mb-3">
+                <label for="loginEmail" class="form-label">E-Mail</label>
+                <input type="text" class="form-control" id="loginEmail" required autocomplete="email">
+              </div>
+              <div class="mb-3">
+                <label for="loginPassword" class="form-label">Passwort</label>
+                <input type="password" class="form-control" id="loginPassword" required autocomplete="current-password">
+              </div>
+              <button type="submit" class="btn btn-primary w-100">Anmelden</button>
+            </form>
+            <div class="text-center text-muted small mt-2" id="loginVersion" style="font-size:0.75rem"></div>
+          </div>
+          <div class="tab-pane fade" id="registerPanel">
+            <form id="registerForm">
+              <div class="mb-3">
+                <label for="regName" class="form-label">Vollständiger Name</label>
+                <input type="text" class="form-control" id="regName" required>
+              </div>
+              <div class="mb-3">
+                <label for="regEmail" class="form-label">E-Mail</label>
+                <input type="text" class="form-control" id="regEmail" required>
+              </div>
+              <div class="mb-3">
+                <label for="regPassword" class="form-label">Passwort</label>
+                <input type="password" class="form-control" id="regPassword" required minlength="4">
+              </div>
+              <div class="mb-3">
+                <label for="regAccountType" class="form-label">Kontotyp</label>
+                <select class="form-select" id="regAccountType">
+                  <option value="giro">Girokonto (0,25€ Gebühr pro Überweisung)</option>
+                  <option value="sparkonto">Sparkonto (0,50€ Gebühr, 0,5% Zinsen)</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-success w-100">Konto erstellen</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- App Screen -->
+<div id="appScreen" class="d-none">
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container">
+      <span class="navbar-brand mb-0">Banking System</span>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-light" id="navUser"></span>
+        <button class="btn btn-outline-light btn-sm" id="changePwBtn">Passwort ändern</button>
+        <button class="btn btn-outline-light btn-sm" id="logoutBtn">Abmelden</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-4">
+    <div id="userInfoCard" class="card mb-4 d-none">
+      <div class="card-body">
+        <h5 class="card-title" id="myName"></h5>
+        <p class="card-text mb-1"><strong>E-Mail:</strong> <span id="myEmail"></span></p>
+        <p class="card-text mb-1"><strong>Kontotyp:</strong> <span id="myAccountType"></span></p>
+        <p class="card-text mb-0"><strong>Kontostand:</strong> <span id="myBalance" class="fs-4"></span></p>
+      </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-4" id="tabNav">
+      <li class="nav-item" id="navOverview">
+        <button class="nav-link active" data-bs-target="#overview" data-bs-toggle="tab">Admin-Übersicht</button>
+      </li>
+      <li class="nav-item" id="navAddUser">
+        <button class="nav-link" data-bs-target="#addUser" data-bs-toggle="tab">Benutzer anlegen</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-target="#sendMoney" data-bs-toggle="tab">Überweisen</button>
+      </li>
+      <li class="nav-item" id="navWithdraw">
+        <button class="nav-link" data-bs-target="#withdraw" data-bs-toggle="tab">Auszahlen</button>
+      </li>
+      <li class="nav-item" id="navDeposit">
+        <button class="nav-link" data-bs-target="#deposit" data-bs-toggle="tab">Einzahlen</button>
+      </li>
+      <li class="nav-item" id="navAudit">
+        <button class="nav-link" data-bs-target="#audit" data-bs-toggle="tab">Prüfprotokoll</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-bs-target="#statement" data-bs-toggle="tab">Kontoauszug</button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+      <!-- Overview -->
+      <div class="tab-pane fade show active" id="overview">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Alle Konten</span>
+            <div>
+              <button class="btn btn-outline-success btn-sm me-1" id="interestBtn" onclick="App.applyInterest()">Zinsen</button>
+              <button class="btn btn-outline-secondary btn-sm me-2" onclick="App.changeInterestRate()">Zinssatz</button>
+              <button class="btn btn-outline-danger btn-sm me-2" id="showDeletedBtn" onclick="App.showDeletedUsers()">Gelöschte Benutzer</button>
+              <span class="badge bg-primary fs-6" id="totalUsers">0 Benutzer</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="filter-row">
+              <input type="text" class="form-control" id="overviewFilter" placeholder="Suchen...">
+            </div>
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead>
+                  <tr>
+                    <th class="sortable" data-sort="idx">#</th>
+                    <th class="sortable" data-sort="name">Name</th>
+                    <th class="sortable" data-sort="email">E-Mail</th>
+                    <th class="sortable" data-sort="type">Kontotyp</th>
+                    <th class="sortable" data-sort="balance">Kontostand</th>
+                    <th>Limit</th>
+                    <th class="sortable" data-sort="role">Rolle</th>
+                    <th>Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody id="overviewTable"></tbody>
+              </table>
+            </div>
+            <div class="mt-3 d-flex justify-content-between">
+              <span><strong>Gesamtes Guthaben: </strong><span id="totalFunds">0,00 €</span></span>
+              <span><strong>Eingenommene Gebühren: </strong><span id="totalFees">0,00 €</span></span>
+              <span><strong>Zinssatz: </strong><span id="interestRateDisplay">0,5</span>%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add User -->
+      <div class="tab-pane fade" id="addUser">
+        <div class="card">
+          <div class="card-header">Neuen Benutzer anlegen</div>
+          <div class="card-body">
+            <form id="addUserForm">
+              <div class="mb-3">
+                <label for="userName" class="form-label">Vollständiger Name</label>
+                <input type="text" class="form-control" id="userName" required>
+              </div>
+              <div class="mb-3">
+                <label for="userEmail" class="form-label">E-Mail</label>
+                <input type="email" class="form-control" id="userEmail" required>
+              </div>
+              <div class="mb-3">
+                <label for="userPassword" class="form-label">Passwort</label>
+                <input type="password" class="form-control" id="userPassword" required minlength="4">
+              </div>
+              <div class="mb-3">
+                <label for="initialDeposit" class="form-label">Startguthaben</label>
+                <input type="number" class="form-control" id="initialDeposit" min="0" step="0.01" value="0">
+              </div>
+              <div class="form-check mb-3">
+                <input type="checkbox" class="form-check-input" id="newUserAdmin">
+                <label class="form-check-label" for="newUserAdmin">Admin-Rechte geben</label>
+              </div>
+              <div class="mb-3">
+                <label for="newUserAccountType" class="form-label">Kontotyp</label>
+                <select class="form-select" id="newUserAccountType">
+                  <option value="giro">Girokonto</option>
+                  <option value="sparkonto">Sparkonto</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-success">Benutzer anlegen</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Send Money -->
+      <div class="tab-pane fade" id="sendMoney">
+        <div class="card">
+          <div class="card-header">Geld überweisen</div>
+          <div class="card-body">
+            <form id="sendMoneyForm">
+              <div class="mb-3">
+                <label for="fromUser" class="form-label">Von</label>
+                <input type="text" class="form-control mb-1 user-search" data-target="fromUser" placeholder="Suchen...">
+                <select class="form-select" id="fromUser" required></select>
+              </div>
+              <div class="mb-3">
+                <label for="toUser" class="form-label">An</label>
+                <input type="text" class="form-control mb-1 user-search" data-target="toUser" placeholder="Suchen...">
+                <select class="form-select" id="toUser" required></select>
+              </div>
+              <div class="mb-3">
+                <label for="amount" class="form-label">Betrag (€)</label>
+                <input type="number" class="form-control" id="amount" min="0.01" step="0.01" required>
+              </div>
+              <div class="mb-3">
+                <label for="transferReason" class="form-label">Verwendungszweck</label>
+                <input type="text" class="form-control" id="transferReason" maxlength="100">
+              </div>
+              <div class="alert alert-info py-2 mb-3" id="feeInfo">Überweisungsgebühr: 0,25 € (Girokonto)</div>
+              <div id="beneficiariesSection" class="mb-3 d-none">
+                <label class="form-label">Meine Empfänger</label>
+                <div id="beneficiariesList" class="d-flex flex-wrap gap-1"></div>
+              </div>
+              <button type="submit" class="btn btn-primary">Überweisen</button>
+            </form>
+            <div class="mt-4" id="recentTransfers">
+              <h6>Letzte Überweisungen</h6>
+              <div class="filter-row">
+                <input type="text" class="form-control" id="txSearch" placeholder="Suche...">
+                <input type="text" class="form-control" id="txFilterName" placeholder="Name filtern...">
+                <input type="text" class="form-control" id="txFilterReason" placeholder="Verwendungszweck...">
+                <input type="date" class="form-control" id="txFilterDate">
+                <button class="btn btn-outline-secondary btn-sm" id="txFilterReset">Zurücksetzen</button>
+              </div>
+              <table class="table table-sm">
+                <thead>
+                  <tr><th>Von</th><th>An</th><th>Betrag</th><th>Gebühr</th><th>Verwendungszweck</th><th>Zeit</th><th>Aktionen</th></tr>
+                </thead>
+                <tbody id="historyTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Withdraw -->
+      <div class="tab-pane fade" id="withdraw">
+        <div class="card">
+          <div class="card-header">Geld abheben</div>
+          <div class="card-body">
+            <form id="withdrawForm">
+              <div class="mb-3" id="withdrawUserGroup">
+                <label for="withdrawUser" class="form-label">Benutzer</label>
+                <input type="text" class="form-control mb-1 user-search" data-target="withdrawUser" placeholder="Suchen...">
+                <select class="form-select" id="withdrawUser" required></select>
+              </div>
+              <div class="mb-3">
+                <label for="withdrawBalance" class="form-label">Aktueller Kontostand</label>
+                <input type="text" class="form-control" id="withdrawBalance" readonly>
+              </div>
+              <div class="mb-3">
+                <label for="withdrawAmount" class="form-label">Betrag (€)</label>
+                <input type="number" class="form-control" id="withdrawAmount" min="0.01" step="0.01" required>
+              </div>
+              <div class="mb-3">
+                <label for="withdrawReason" class="form-label">Grund</label>
+                <input type="text" class="form-control" id="withdrawReason" value="Auszahlung">
+              </div>
+              <button type="submit" class="btn btn-warning">Auszahlen</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deposit -->
+      <div class="tab-pane fade" id="deposit">
+        <div class="card">
+          <div class="card-header">Geld einzahlen</div>
+          <div class="card-body">
+            <form id="depositForm">
+              <div class="mb-3">
+                <label for="depositUser" class="form-label">Benutzer</label>
+                <input type="text" class="form-control mb-1 user-search" data-target="depositUser" placeholder="Suchen...">
+                <select class="form-select" id="depositUser" required></select>
+              </div>
+              <div class="mb-3">
+                <label for="depositBalance" class="form-label">Aktueller Kontostand</label>
+                <input type="text" class="form-control" id="depositBalance" readonly>
+              </div>
+              <div class="mb-3">
+                <label for="depositAmount" class="form-label">Betrag (€)</label>
+                <input type="number" class="form-control" id="depositAmount" min="0.01" step="0.01" required>
+              </div>
+              <div class="mb-3">
+                <label for="depositReason" class="form-label">Grund</label>
+                <input type="text" class="form-control" id="depositReason" value="Einzahlung">
+              </div>
+              <button type="submit" class="btn btn-success">Einzahlen</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit -->
+      <div class="tab-pane fade" id="audit">
+        <div class="card">
+          <div class="card-header">Prüfprotokoll</div>
+          <div class="card-body">
+            <div class="filter-row">
+              <input type="text" class="form-control" id="auditFilter" placeholder="Suchen...">
+              <button class="btn btn-outline-secondary btn-sm" id="auditFilterReset">Zurücksetzen</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped mb-0">
+                <thead>
+                  <tr>
+                    <th class="sortable" data-sort="action">Aktion</th>
+                    <th class="sortable" data-sort="by">Von</th>
+                    <th class="sortable" data-sort="target">Ziel</th>
+                    <th class="sortable" data-sort="detail">Details</th>
+                    <th class="sortable" data-sort="time">Zeit</th>
+                  </tr>
+                </thead>
+                <tbody id="auditTable"></tbody>
+              </table>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Statement -->
+      <div class="tab-pane fade" id="statement">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Kontoauszug</span>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-primary btn-sm" onclick="App.downloadPDF()">PDF</button>
+              <button class="btn btn-outline-primary btn-sm" id="printStatementBtn" onclick="App.printStatement()">Drucken</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <form id="statementForm" class="row g-2 mb-3">
+              <div class="col-auto" id="stmtUserGroup">
+                <select class="form-select" id="stmtUser">
+                  <option value="">-- Benutzer wählen --</option>
+                </select>
+                <input type="text" class="form-control mt-1 user-search" data-target="stmtUser" placeholder="Suchen...">
+              </div>
+              <div class="col-auto">
+                <input type="date" class="form-control" id="stmtFrom">
+              </div>
+              <div class="col-auto">
+                <input type="date" class="form-control" id="stmtTo">
+              </div>
+              <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Anzeigen</button>
+              </div>
+            </form>
+            <div id="statementOutput" class="d-none">
+              <div class="border rounded p-3 bg-white" id="statementPaper">
+                <div class="text-center mb-3">
+                  <h4 class="mb-0">Banking System</h4>
+                  <small>Kontoauszug</small>
+                </div>
+                <hr>
+                <div class="row mb-2">
+                  <div class="col"><strong>Kontoinhaber:</strong> <span id="stmtName"></span></div>
+                  <div class="col"><strong>Kontotyp:</strong> <span id="stmtType"></span></div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col"><strong>Zeitraum:</strong> <span id="stmtPeriod"></span></div>
+                  <div class="col"><strong>Erstellt:</strong> <span id="stmtDate"></span></div>
+                </div>
+                <table class="table table-sm table-striped mb-0">
+                  <thead>
+                    <tr><th>Datum</th><th>Vorgang</th><th>Betrag</th><th>Guthaben</th></tr>
+                  </thead>
+                  <tbody id="stmtTable"></tbody>
+                </table>
+                <hr>
+                <div class="row">
+                  <div class="col"><strong>Anfangsguthaben:</strong> <span id="stmtStartBalance"></span></div>
+                  <div class="col text-end"><strong>Endguthaben:</strong> <span id="stmtEndBalance"></span></div>
+                </div>
+              </div>
+            </div>
+            <p id="stmtEmpty" class="text-muted mb-0">Wählen Sie einen Benutzer und Zeitraum aus.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePwModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Passwort ändern</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="changePwForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="oldPassword" class="form-label">Aktuelles Passwort</label>
+            <input type="password" class="form-control" id="oldPassword" required>
+          </div>
+          <div class="mb-3">
+            <label for="newPassword" class="form-label">Neues Passwort</label>
+            <input type="password" class="form-control" id="newPassword" required minlength="4">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+          <button type="submit" class="btn btn-primary">Passwort aktualisieren</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Deleted Users Modal -->
+<div class="modal fade" id="deletedModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Gelöschte Benutzer wiederherstellen</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table table-sm table-striped mb-0">
+          <thead>
+            <tr><th>Name</th><th>E-Mail</th><th>Letzter Kontostand</th><th></th></tr>
+          </thead>
+          <tbody id="deletedTable"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal fade" id="settingsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Einstellungen: <span id="settingsUserName"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="settingsForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="settingsAccountType" class="form-label">Kontotyp</label>
+            <select class="form-select" id="settingsAccountType">
+              <option value="giro">Girokonto</option>
+              <option value="sparkonto">Sparkonto</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="settingsDailyLimit" class="form-label">Tageslimit (€, 0 = kein Limit)</label>
+            <input type="number" class="form-control" id="settingsDailyLimit" min="0" step="0.01">
+          </div>
+          <div class="mb-3">
+            <label for="settingsDailySpent" class="form-label">Heute bereits ausgegeben</label>
+            <input type="text" class="form-control" id="settingsDailySpent" readonly>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+          <button type="submit" class="btn btn-primary">Speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmTitle">Bestätigung</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="confirmBody">Sind Sie sicher?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button type="button" class="btn btn-danger" id="confirmBtn">Bestätigen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"></script>
+<script>
+const API = window.location.origin
+
+async function api(method, path, body) {
+  const opts = { method, headers: { "Content-Type": "application/json" } }
+  const token = sessionStorage.getItem("token")
+  if (token) opts.headers["Authorization"] = `Bearer ${token}`
+  if (body) opts.body = JSON.stringify(body)
+  const res = await fetch(`${API}${path}`, opts)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Fehler bei der Anfrage")
+  return data
+}
+
+const fmt = (n) => n.toFixed(2).replace(".", ",") + " €"
+const parseEuro = (s) => parseFloat(s.replace(",", "."))
+
+let _confirmResolve = null
+document.getElementById("confirmBtn")?.addEventListener("click", () => {
+  const r = _confirmResolve
+  _confirmResolve = null
+  bootstrap.Modal.getInstance(document.getElementById("confirmModal")).hide()
+  if (r) r(true)
+})
+document.getElementById("confirmModal")?.addEventListener("hidden.bs.modal", () => {
+  if (_confirmResolve) { _confirmResolve(false); _confirmResolve = null }
+})
+function showConfirmAsync(title, body) {
+  return new Promise(resolve => {
+    _confirmResolve = resolve
+    document.getElementById("confirmTitle").textContent = title
+    document.getElementById("confirmBody").innerHTML = body
+    new bootstrap.Modal(document.getElementById("confirmModal")).show()
+  })
+}
+
+const App = {
+  users: [],
+  transfers: [],
+  currentUser: null,
+  sortKey: null,
+  sortDir: null,
+  _audit: null,
+  _auditSortKey: null,
+  _auditSortDir: "asc",
+  _collectedFees: 0,
+  _interestRate: 0.5,
+
+  async init() {
+    const token = sessionStorage.getItem("token")
+    if (!token) return
+    try {
+      this.currentUser = await api("GET", "/api/me")
+      await this.showApp()
+    } catch {
+      sessionStorage.removeItem("token")
+    }
+  },
+
+  async register(name, email, password, isAdmin, accountType) {
+    const data = await api("POST", "/api/register", { name, email, password, isAdmin, accountType })
+    sessionStorage.setItem("token", data.token)
+    this.currentUser = data.user
+    return data.user
+  },
+
+  async login(email, password) {
+    const data = await api("POST", "/api/login", { email, password })
+    sessionStorage.setItem("token", data.token)
+    this.currentUser = data.user
+    return data.user
+  },
+
+  async refreshData() {
+    if (!this.currentUser) return
+    if (this.currentUser.isAdmin) {
+      const [u, t, s] = await Promise.all([
+        api("GET", "/api/users"),
+        api("GET", "/api/transfers"),
+        api("GET", "/api/settings")
+      ])
+      this.users = u.users
+      this.transfers = t.transfers
+      this._collectedFees = u.collectedFees
+      this._interestRate = s.interestRate
+    } else {
+      this.currentUser = await api("GET", "/api/me")
+      const t = await api("GET", "/api/transfers")
+      this.transfers = t.transfers
+    }
+    this.render()
+  },
+
+  async addUser(name, email, password, deposit, isAdmin, accountType) {
+    await api("POST", "/api/users", { name, email, password, deposit, isAdmin, accountType })
+    await this.refreshData()
+  },
+
+  async deleteUser(id) {
+    const u = this.users.find(u => u.id === id)
+    if (!u) return
+    if (!await showConfirmAsync("Benutzer löschen", `${u.name} wirklich löschen?`)) return
+    await api("DELETE", `/api/users/${id}`)
+    await this.refreshData()
+  },
+
+  async sendMoney(fromId, toId, amount, reason) {
+    const toUser = this.users.find(u => u.id === toId)
+    if (!toUser) return
+    const fromName = this.currentUser.isAdmin ? this.users.find(u => u.id === fromId)?.name : this.currentUser.name
+    if (!await showConfirmAsync("Überweisung bestätigen",
+      `${amount.toFixed(2).replace(".", ",")} € von "${fromName}" an "${toUser.name}" senden?`)) return
+    if (this.currentUser.isAdmin) {
+      await api("POST", "/api/admin-transfer", { fromId, toId, amount, reason })
+    } else {
+      await api("POST", "/api/transfer", { toId, amount, reason })
+    }
+    try { await api("POST", "/api/beneficiaries", { userId: toId }) } catch {}
+    await this.refreshData()
+  },
+
+  async reverseTransfer(time) {
+    const t = this.transfers.find(t => t.time === time)
+    if (!t) return
+    if (!await showConfirmAsync("Transaktion stornieren",
+      `${t.amount}€ von "${t.fromName}" an "${t.toName}" stornieren?`)) return
+    await api("POST", "/api/reverse-transfer", { time })
+    await this.refreshData()
+  },
+
+  async renderBeneficiaries() {
+    const section = document.getElementById("beneficiariesSection")
+    if (!section) return
+    if (!this.currentUser || this.currentUser.isAdmin) { section.classList.add("d-none"); return }
+    section.classList.remove("d-none")
+    try {
+      const data = await api("GET", "/api/beneficiaries")
+      const list = document.getElementById("beneficiariesList")
+      if (data.beneficiaries.length === 0) {
+        list.innerHTML = '<small class="text-muted">Keine gespeicherten Empfänger</small>'
+        return
+      }
+      list.innerHTML = data.beneficiaries.map(b =>
+        `<div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-secondary" onclick="App.selectBeneficiary(${b.id})">${b.name}</button>
+          <button class="btn btn-outline-secondary" onclick="App.removeBeneficiary(${b.id})" title="Entfernen">✕</button>
+        </div>`
+      ).join("") + ' <button class="btn btn-outline-danger btn-sm" onclick="App.clearBeneficiaries()">Alle löschen</button>'
+    } catch {}
+  },
+
+  selectBeneficiary(id) {
+    document.getElementById("toUser").value = id.toString()
+  },
+
+  async removeBeneficiary(id) {
+    await api("DELETE", `/api/beneficiaries/${id}`)
+    await this.renderBeneficiaries()
+  },
+
+  async clearBeneficiaries() {
+    if (!await showConfirmAsync("Empfänger löschen", "Alle gespeicherten Empfänger entfernen?")) return
+    try {
+      const data = await api("GET", "/api/beneficiaries")
+      for (const b of data.beneficiaries) {
+        await api("DELETE", `/api/beneficiaries/${b.id}`)
+      }
+      await this.renderBeneficiaries()
+    } catch {}
+  },
+
+  async changePassword(oldPassword, newPassword) {
+    await api("POST", "/api/change-password", { oldPassword, newPassword })
+    this.currentUser = await api("GET", "/api/me")
+  },
+
+  async withdraw(userId, amount, reason) {
+    await api("POST", "/api/withdraw", { userId, amount, reason })
+    await this.refreshData()
+  },
+
+  async deposit(userId, amount, reason) {
+    await api("POST", "/api/deposit", { userId, amount, reason })
+    await this.refreshData()
+  },
+
+  async showDeletedUsers() {
+    const data = await api("GET", "/api/users/deleted")
+    const tbody = document.getElementById("deletedTable")
+    if (data.users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Keine gelöschten Benutzer</td></tr>'
+    } else {
+      tbody.innerHTML = data.users.map(u =>
+        `<tr>
+          <td>${u.name}</td>
+          <td>${u.email}</td>
+          <td>${fmt(u.balance)}</td>
+          <td><button class="btn btn-success btn-sm" onclick="App.restoreUser(${u.id})">Wiederherstellen</button></td>
+        </tr>`
+      ).join("")
+    }
+    new bootstrap.Modal(document.getElementById("deletedModal")).show()
+  },
+
+  async restoreUser(id) {
+    await api("POST", `/api/users/${id}/restore`)
+    bootstrap.Modal.getInstance(document.getElementById("deletedModal")).hide()
+    await this.refreshData()
+  },
+
+  async openSettings(id) {
+    const u = this.users.find(u => u.id === id)
+    if (!u) return
+    document.getElementById("settingsUserName").textContent = u.name
+    document.getElementById("settingsAccountType").value = u.accountType || "giro"
+    document.getElementById("settingsDailyLimit").value = u.dailyLimit || 0
+    document.getElementById("settingsDailySpent").textContent = u.dailySpent ? fmt(u.dailySpent) : "0,00 €"
+    this._settingsUserId = id
+    new bootstrap.Modal(document.getElementById("settingsModal")).show()
+  },
+
+  async saveSettings(id, accountType, dailyLimit) {
+    await api("PUT", `/api/users/${id}/settings`, { accountType, dailyLimit })
+    await this.refreshData()
+  },
+
+  async applyInterest() {
+    if (!await showConfirmAsync("Zinsen gutschreiben", "Zinsen für alle Sparkonten gutschreiben?")) return
+    const data = await api("POST", "/api/interest")
+    App.showToast(`${data.totalInterest.toFixed(2).replace(".", ",")} € Zinsen gutgeschrieben`)
+    await this.refreshData()
+  },
+
+  async changeInterestRate() {
+    const settings = await api("GET", "/api/settings")
+    const current = settings.interestRate
+    const input = prompt("Zinssatz in % (z.B. 0.5 für 0,5%):", current.toString())
+    if (input === null) return
+    const rate = parseFloat(input)
+    if (isNaN(rate) || rate < 0 || rate > 100) {
+      App.showToast("Ungültiger Zinssatz (0-100)", "danger")
+      return
+    }
+    await api("PUT", "/api/settings", { interestRate: rate })
+    App.showToast(`Zinssatz auf ${rate}% geändert`)
+    this._interestRate = rate
+    this.renderOverview()
+  },
+
+  async loadStatement(userId, from, to) {
+    const data = await api("POST", "/api/statement", { userId, from, to })
+    const user = data.user
+    const txs = data.transfers
+    document.getElementById("stmtName").textContent = user.name
+    document.getElementById("stmtType").textContent = user.accountType === "sparkonto" ? "Sparkonto" : "Girokonto"
+    document.getElementById("stmtPeriod").textContent = (from || "Anfang") + " – " + (to || "heute")
+    document.getElementById("stmtDate").textContent = new Date().toLocaleDateString("de-DE")
+
+    let running = user.balance
+    for (const t of txs) {
+      if (t.fromName === user.name) running += t.amount + (t.fee || 0)
+      else running -= t.amount
+    }
+    const startBalance = running
+
+    const tbody = document.getElementById("stmtTable")
+    if (txs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Keine Buchungen im Zeitraum</td></tr>'
+    } else {
+      tbody.innerHTML = [...txs].reverse().map(t => {
+        const isOut = t.fromName === user.name
+        running += isOut ? -(t.amount + (t.fee || 0)) : t.amount
+        const label = t.fromName === "Einzahlung" ? "Einzahlung" :
+                      t.toName === "Auszahlung" ? "Auszahlung" :
+                      t.fromName === "Zinsen" ? "Zinsgutschrift" :
+                      isOut ? `Überweisung an ${t.toName}` : `Überweisung von ${t.fromName}`
+        const amountStr = isOut ? `-${fmt(t.amount)}` : fmt(t.amount)
+        const feeStr = t.fee ? ` (inkl. ${fmt(t.fee)} Gebühr)` : ""
+        return `<tr>
+          <td>${t.time}</td>
+          <td>${label}${feeStr}${t.reason ? `<br><small>${t.reason}</small>` : ''}</td>
+          <td class="${isOut ? 'text-danger' : 'text-success'}">${amountStr}</td>
+          <td>${fmt(running)}</td>
+        </tr>`
+      }).join("")
+    }
+    document.getElementById("stmtStartBalance").textContent = fmt(startBalance)
+    document.getElementById("stmtEndBalance").textContent = fmt(user.balance)
+    document.getElementById("statementOutput").classList.remove("d-none")
+    document.getElementById("stmtEmpty").classList.add("d-none")
+  },
+
+  printStatement() {
+    window.print()
+  },
+
+  downloadPDF() {
+    const { jsPDF } = window.jspdf
+    const doc = new jsPDF()
+    const name = document.getElementById("stmtName").textContent
+    const type = document.getElementById("stmtType").textContent
+    const period = document.getElementById("stmtPeriod").textContent
+    const date = document.getElementById("stmtDate").textContent
+    const startBal = document.getElementById("stmtStartBalance").textContent
+    const endBal = document.getElementById("stmtEndBalance").textContent
+    doc.setFontSize(16)
+    doc.text("Banking System - Kontoauszug", 14, 20)
+    doc.setFontSize(10)
+    doc.text(`Kontoinhaber: ${name}  |  Kontotyp: ${type}`, 14, 30)
+    doc.text(`Zeitraum: ${period}  |  Erstellt: ${date}`, 14, 37)
+    const rows = [...document.querySelectorAll("#stmtTable tr")].map(tr =>
+      [...tr.querySelectorAll("td")].map(td => td.textContent.trim())
+    )
+    const headers = [["Datum", "Vorgang", "Betrag", "Guthaben"]]
+    doc.autoTable({ head: headers, body: rows, startY: 45, styles: { fontSize: 8 }, theme: "striped" })
+    const finalY = doc.lastAutoTable.finalY + 5
+    doc.text(`Anfangsguthaben: ${startBal}`, 14, finalY)
+    doc.text(`Endguthaben: ${endBal}`, 120, finalY)
+    doc.save("Kontoauszug.pdf")
+  },
+
+  setSort(key) {
+    if (this.sortKey === key) {
+      this.sortDir = this.sortDir === "asc" ? "desc" : "asc"
+    } else {
+      this.sortKey = key
+      this.sortDir = "asc"
+    }
+    this.renderOverview()
+  },
+
+  render() {
+    this._audit = null
+    this.renderOverview()
+    this.renderUserSelects()
+    this.renderHistory()
+    this.renderAudit()
+    this.renderBeneficiaries()
+  },
+
+  renderOverview() {
+    const tbody = document.getElementById("overviewTable")
+    const filter = document.getElementById("overviewFilter").value.toLowerCase()
+    document.getElementById("totalUsers").textContent = `${this.users.length} Benutzer`
+
+    if (this.users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Keine Benutzer</td></tr>'
+      document.getElementById("totalFunds").textContent = "0,00 €"
+      document.getElementById("totalFees").textContent = "0,00 €"
+      return
+    }
+
+    let list = [...this.users]
+    if (filter) {
+      list = list.filter(u => u.name.toLowerCase().includes(filter) || u.email.toLowerCase().includes(filter))
+    }
+
+    if (this.sortKey) {
+      list.sort((a, b) => {
+        let va, vb
+        if (this.sortKey === "name") { va = a.name; vb = b.name }
+        else if (this.sortKey === "email") { va = a.email; vb = b.email }
+        else if (this.sortKey === "balance") { va = a.balance; vb = b.balance }
+        else if (this.sortKey === "role") { va = a.isAdmin ? 1 : 0; vb = b.isAdmin ? 1 : 0 }
+        else if (this.sortKey === "type") { va = a.accountType || "giro"; vb = b.accountType || "giro" }
+        else { va = a.id; vb = b.id }
+        if (va < vb) return this.sortDir === "asc" ? -1 : 1
+        if (va > vb) return this.sortDir === "asc" ? 1 : -1
+        return 0
+      })
+    }
+
+    document.querySelectorAll("#overview th.sortable").forEach(th => {
+      th.classList.remove("asc", "desc")
+      if (th.dataset.sort === this.sortKey) th.classList.add(this.sortDir)
+    })
+
+    const isAdmin = this.currentUser && this.currentUser.isAdmin
+    tbody.innerHTML = list.map((u, i) =>
+      `<tr>
+        <td>${i + 1}</td>
+        <td>${u.name}</td>
+        <td>${u.email}</td>
+        <td>${u.accountType === "sparkonto" ? '<span class="badge bg-warning text-dark">Sparkonto</span>' : '<span class="badge bg-info text-dark">Girokonto</span>'}</td>
+        <td>${fmt(u.balance)}</td>
+        <td>${u.dailyLimit > 0 ? fmt(u.dailyLimit) : '—'}</td>
+        <td>${u.isAdmin ? '<span class="badge bg-danger">Admin</span>' : '<span class="badge bg-secondary">Benutzer</span>'}</td>
+        <td>
+          <div class="d-flex gap-1">
+            ${isAdmin ? `<button class="btn btn-outline-info btn-sm" onclick="App.showUserTransactions(${u.id})">TX</button>` : ''}
+            ${isAdmin ? `<button class="btn btn-outline-secondary btn-sm" onclick="App.openSettings(${u.id})">Einst.</button>` : ''}
+            ${isAdmin && u.id !== this.currentUser.id ? `<button class="btn btn-outline-danger btn-sm" onclick="App.deleteUser(${u.id})">Löschen</button>` : ''}
+          </div>
+        </td>
+      </tr>`
+    ).join("")
+    const total = this.users.reduce((s, u) => s + u.balance, 0)
+    document.getElementById("totalFunds").textContent = fmt(total)
+    document.getElementById("totalFees").textContent = this._collectedFees ? fmt(this._collectedFees) : "0,00 €"
+    document.getElementById("interestRateDisplay").textContent = (this._interestRate || 0.5).toString().replace(".", ",")
+  },
+
+  renderUserSelects() {
+    const html = this.users.map(u =>
+      `<option value="${u.id}">${u.name} (${fmt(u.balance)})</option>`
+    ).join("")
+    ;["fromUser", "toUser"].forEach(id => {
+      const el = document.getElementById(id)
+      const val = el.value
+      el.innerHTML = '<option value="">-- Benutzer wählen --</option>' + html
+      if (val) el.value = val
+    })
+    if (this.currentUser && !this.currentUser.isAdmin) {
+      document.getElementById("fromUser").value = this.currentUser.id.toString()
+      const feeInfo = document.getElementById("feeInfo")
+      const fee = this.currentUser.accountType === "sparkonto" ? "0,50" : "0,25"
+      feeInfo.textContent = `Überweisungsgebühr: ${fee} € (${this.currentUser.accountType === "sparkonto" ? "Sparkonto" : "Girokonto"})`
+    }
+
+    const wGroup = document.getElementById("withdrawUserGroup")
+    const wSelect = document.getElementById("withdrawUser")
+    const wBalance = document.getElementById("withdrawBalance")
+    if (this.currentUser && this.currentUser.isAdmin) {
+      wGroup.classList.remove("d-none")
+      wSelect.innerHTML = '<option value="">-- Benutzer wählen --</option>' + html
+      wBalance.value = ""
+    } else if (this.currentUser) {
+      wGroup.classList.add("d-none")
+      wSelect.innerHTML = `<option value="${this.currentUser.id}">${this.currentUser.name}</option>`
+      wBalance.value = fmt(this.currentUser.balance)
+    }
+
+    const dSelect = document.getElementById("depositUser")
+    if (dSelect) {
+      dSelect.innerHTML = '<option value="">-- Benutzer wählen --</option>' + html
+    }
+
+    const stmtUser = document.getElementById("stmtUser")
+    if (stmtUser && this.currentUser) {
+      if (this.currentUser.isAdmin) {
+        document.getElementById("stmtUserGroup").classList.remove("d-none")
+        stmtUser.innerHTML = '<option value="">-- Benutzer wählen --</option>' + html
+      } else {
+        document.getElementById("stmtUserGroup").classList.add("d-none")
+        stmtUser.innerHTML = `<option value="${this.currentUser.id}">${this.currentUser.name}</option>`
+      }
+    }
+  },
+
+  renderHistory() {
+    const tbody = document.getElementById("historyTable")
+    let list = [...this.transfers]
+
+    const search = document.getElementById("txSearch").value.toLowerCase()
+    const nameFilter = document.getElementById("txFilterName").value.toLowerCase()
+    const reasonFilter = document.getElementById("txFilterReason").value.toLowerCase()
+    const dateFilter = document.getElementById("txFilterDate").value
+
+    if (search) list = list.filter(t =>
+      t.fromName.toLowerCase().includes(search) ||
+      t.toName.toLowerCase().includes(search) ||
+      fmt(t.amount).toLowerCase().includes(search) ||
+      (t.fee ? fmt(t.fee) : "").toLowerCase().includes(search) ||
+      (t.reason || "").toLowerCase().includes(search) ||
+      t.time.toLowerCase().includes(search)
+    )
+    if (nameFilter) list = list.filter(t => t.fromName.toLowerCase().includes(nameFilter) || t.toName.toLowerCase().includes(nameFilter))
+    if (reasonFilter) list = list.filter(t => (t.reason || "").toLowerCase().includes(reasonFilter))
+    if (dateFilter) list = list.filter(t => t.time.startsWith(dateFilter))
+
+    const isAdmin = this.currentUser && this.currentUser.isAdmin
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-muted text-center">Keine Überweisungen</td></tr>'
+      return
+    }
+    tbody.innerHTML = list.slice(0, 50).map(t => {
+      const reversed = t.reversed
+      const rowClass = reversed ? 'class="text-muted"' : ''
+      const actionTd = isAdmin
+        ? `<td>${reversed ? '<span class="badge bg-secondary">Storniert</span>' : `<button class="btn btn-outline-danger btn-sm" onclick="App.reverseTransfer('${t.time}')">Stornieren</button>`}</td>`
+        : '<td></td>'
+      return `<tr ${rowClass}>
+        <td>${reversed ? '<s>' + t.fromName + '</s>' : t.fromName}</td>
+        <td>${reversed ? '<s>' + t.toName + '</s>' : t.toName}</td>
+        <td>${fmt(t.amount)}</td>
+        <td>${t.fee ? fmt(t.fee) : '—'}</td>
+        <td>${t.reason || "—"}</td>
+        <td>${t.time}</td>
+        ${actionTd}
+      </tr>`
+    }).join("")
+  },
+
+  async renderAudit() {
+    if (!this.currentUser || !this.currentUser.isAdmin) return
+    const tbody = document.getElementById("auditTable")
+    if (!this._audit) {
+      try {
+        const data = await api("GET", "/api/audit")
+        this._audit = data.audit
+      } catch {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Fehler beim Laden</td></tr>'
+        return
+      }
+    }
+    let list = [...this._audit]
+    const filter = document.getElementById("auditFilter").value.toLowerCase()
+    if (filter) {
+      list = list.filter(a =>
+        a.action.toLowerCase().includes(filter) ||
+        a.by.toLowerCase().includes(filter) ||
+        a.target.toLowerCase().includes(filter) ||
+        (a.detail || "").toLowerCase().includes(filter) ||
+        a.time.toLowerCase().includes(filter)
+      )
+    }
+    if (this._auditSortKey) {
+      list.sort((a, b) => {
+        let va = (a[this._auditSortKey] || "").toString().toLowerCase()
+        let vb = (b[this._auditSortKey] || "").toString().toLowerCase()
+        if (va < vb) return this._auditSortDir === "asc" ? -1 : 1
+        if (va > vb) return this._auditSortDir === "asc" ? 1 : -1
+        return 0
+      })
+    }
+    document.querySelectorAll("#audit th.sortable").forEach(th => {
+      th.classList.remove("asc", "desc")
+      if (th.dataset.sort === this._auditSortKey) th.classList.add(this._auditSortDir)
+    })
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Keine Einträge</td></tr>'
+      return
+    }
+    tbody.innerHTML = list.map(a =>
+      `<tr>
+        <td>${a.action}</td>
+        <td>${a.by}</td>
+        <td>${a.target}</td>
+        <td>${a.detail || "—"}</td>
+        <td>${a.time}</td>
+      </tr>`
+    ).join("")
+  },
+
+  async showUserTransactions(id) {
+    const data = await api("GET", `/api/transfers/${id}`)
+    const user = data.user
+    document.getElementById("txUserName").textContent = user.name
+    document.getElementById("txUserBalance").textContent = fmt(user.balance)
+    const tbody = document.getElementById("txTable")
+    if (data.transfers.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">Keine Transaktionen</td></tr>'
+    } else {
+      tbody.innerHTML = data.transfers.map(t =>
+        `<tr class="${t.fromName === user.name ? "table-danger" : "table-success"}">
+          <td>${t.fromName}</td>
+          <td>${t.toName}</td>
+          <td>${fmt(t.amount)}</td>
+          <td>${t.fee ? fmt(t.fee) : '—'}</td>
+          <td>${t.reason || "—"}</td>
+          <td>${t.time}</td>
+        </tr>`
+      ).join("")
+    }
+    new bootstrap.Modal(document.getElementById("txModal")).show()
+  },
+
+  async showApp() {
+    await this.refreshData()
+    document.getElementById("authScreen").classList.add("d-none")
+    document.getElementById("appScreen").classList.remove("d-none")
+    document.getElementById("navUser").textContent = `Angemeldet als ${this.currentUser.name}`
+    const isAdmin = this.currentUser.isAdmin
+    document.getElementById("navOverview").classList.toggle("d-none", !isAdmin)
+    document.getElementById("navAddUser").classList.toggle("d-none", !isAdmin)
+    document.getElementById("navDeposit").classList.toggle("d-none", !isAdmin)
+    document.getElementById("navWithdraw").classList.toggle("d-none", !isAdmin)
+    document.getElementById("navAudit").classList.toggle("d-none", !isAdmin)
+    document.getElementById("overview").classList.toggle("d-none", !isAdmin)
+    document.getElementById("addUser").classList.toggle("d-none", !isAdmin)
+    document.getElementById("deposit").classList.toggle("d-none", !isAdmin)
+    document.getElementById("withdraw").classList.toggle("d-none", !isAdmin)
+    document.getElementById("audit").classList.toggle("d-none", !isAdmin)
+    document.getElementById("recentTransfers").classList.toggle("d-none", !isAdmin)
+    const infoCard = document.getElementById("userInfoCard")
+    if (isAdmin) {
+      infoCard.classList.add("d-none")
+    } else {
+      infoCard.classList.remove("d-none")
+      document.getElementById("myName").textContent = this.currentUser.name
+      document.getElementById("myEmail").textContent = this.currentUser.email
+      document.getElementById("myAccountType").textContent = this.currentUser.accountType === "sparkonto" ? "Sparkonto" : "Girokonto"
+      document.getElementById("myBalance").textContent = fmt(this.currentUser.balance)
+      loadStatementForUser(this.currentUser)
+    }
+    if (!isAdmin) {
+      const tabBtn = document.querySelector('[data-bs-target="#sendMoney"]')
+      if (tabBtn) new bootstrap.Tab(tabBtn).show()
+    }
+  },
+
+  showAuth() {
+    sessionStorage.removeItem("token")
+    this.currentUser = null
+    document.getElementById("appScreen").classList.add("d-none")
+    document.getElementById("authScreen").classList.remove("d-none")
+    document.getElementById("loginForm").reset()
+  },
+
+  async showToast(msg, type = "success") {
+    const container = document.getElementById("toastContainer")
+    const id = `t-${Date.now()}`
+    const el = document.createElement("div")
+    el.id = id
+    el.className = `toast align-items-center text-bg-${type} border-0`
+    el.role = "alert"
+    el.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`
+    container.appendChild(el)
+    const toast = new bootstrap.Toast(el)
+    toast.show()
+    el.addEventListener("hidden.bs.toast", () => el.remove())
+  }
+}
+
+// Sortable headers
+document.getElementById("overviewTable")?.addEventListener("click", e => {
+  const th = e.target.closest("th.sortable")
+  if (th) App.setSort(th.dataset.sort)
+})
+
+document.getElementById("auditTable")?.addEventListener("click", e => {
+  const th = e.target.closest("th.sortable")
+  if (th) {
+    const key = th.dataset.sort
+    if (App._auditSortKey === key) {
+      App._auditSortDir = App._auditSortDir === "asc" ? "desc" : "asc"
+    } else {
+      App._auditSortKey = key
+      App._auditSortDir = "asc"
+    }
+    App.renderAudit()
+  }
+})
+
+// Filter events
+document.getElementById("overviewFilter")?.addEventListener("input", () => App.renderOverview())
+document.getElementById("txFilterName")?.addEventListener("input", () => App.renderHistory())
+document.getElementById("txFilterReason")?.addEventListener("input", () => App.renderHistory())
+document.getElementById("txFilterDate")?.addEventListener("input", () => App.renderHistory())
+document.getElementById("txSearch")?.addEventListener("input", () => App.renderHistory())
+document.getElementById("txFilterReset")?.addEventListener("click", () => {
+  document.getElementById("txSearch").value = ""
+  document.getElementById("txFilterName").value = ""
+  document.getElementById("txFilterReason").value = ""
+  document.getElementById("txFilterDate").value = ""
+  App.renderHistory()
+})
+
+document.getElementById("auditFilter")?.addEventListener("input", () => App.renderAudit())
+document.getElementById("auditFilterReset")?.addEventListener("click", () => {
+  document.getElementById("auditFilter").value = ""
+  App.renderAudit()
+})
+
+// Searchable user selects
+document.addEventListener("input", e => {
+  const input = e.target.closest(".user-search")
+  if (!input) return
+  const select = document.getElementById(input.dataset.target)
+  if (!select) return
+  const q = input.value.toLowerCase()
+  for (const opt of select.options) {
+    if (!opt.value) continue
+    opt.hidden = q && !opt.text.toLowerCase().includes(q)
+  }
+})
+
+// Refresh audit data when tab is shown
+document.querySelector('[data-bs-target="#audit"]')?.addEventListener("shown.bs.tab", () => {
+  App._audit = null
+  App.renderAudit()
+})
+
+async function loadStatementForUser(user) {
+  if (!user) return
+  const stmtUser = document.getElementById("stmtUser")
+  if (stmtUser) stmtUser.value = user.id
+  try {
+    await App.loadStatement(user.id, "", "")
+  } catch (err) {
+    App.showToast("Kontoauszug konnte nicht geladen werden: " + err.message, "danger")
+  }
+}
+
+function loadStatementForActiveUser() {
+  if (!App.currentUser) return
+  if (App.currentUser.isAdmin && App.users.length > 0) {
+    loadStatementForUser(App.users[0])
+  } else if (!App.currentUser.isAdmin) {
+    loadStatementForUser(App.currentUser)
+  }
+}
+
+document.querySelector('[data-bs-target="#statement"]')?.addEventListener("click", loadStatementForActiveUser)
+document.querySelector('[data-bs-target="#statement"]')?.addEventListener("shown.bs.tab", loadStatementForActiveUser)
+
+// Auth
+document.getElementById("loginForm").addEventListener("submit", async e => {
+  e.preventDefault()
+  try {
+    await App.login(
+      document.getElementById("loginEmail").value.trim(),
+      document.getElementById("loginPassword").value
+    )
+    await App.showApp()
+  } catch (err) {
+    App.showToast(err.message, "danger")
+  }
+})
+
+document.getElementById("registerForm").addEventListener("submit", async e => {
+  e.preventDefault()
+  try {
+    await App.register(
+      document.getElementById("regName").value.trim(),
+      document.getElementById("regEmail").value.trim(),
+      document.getElementById("regPassword").value,
+      false,
+      document.getElementById("regAccountType").value
+    )
+    await App.showApp()
+  } catch (err) {
+    App.showToast(err.message, "danger")
+  }
+})
+
+document.getElementById("addUserForm").addEventListener("submit", async e => {
+  e.preventDefault()
+  try {
+    await App.addUser(
+      document.getElementById("userName").value.trim(),
+      document.getElementById("userEmail").value.trim(),
+      document.getElementById("userPassword").value,
+      document.getElementById("initialDeposit").value,
+      document.getElementById("newUserAdmin").checked,
+      document.getElementById("newUserAccountType").value
+    )
+    e.target.reset()
+  } catch (err) {
+    App.showToast(err.message, "danger")
+  }
+})
+
+document.getElementById("sendMoneyForm").addEventListener("submit", async e => {
+  e.preventDefault()
+  try {
+    await App.sendMoney(
+      parseInt(document.getElementById("fromUser").value),
+      parseInt(document.getElementById("toUser").value),
+      parseFloat(document.getElementById("amount").value),
+      document.getElementById("transferReason").value.trim()
+    )
+    e.target.reset()
+  } catch (err) {
+    App.showToast(err.message, "danger")
+  }
+})
+
+document.getElementById("logoutBtn").addEventListener("click", () => App.showAuth())
+
+document.getElementById("changePwBtn").addEventListener("click", () => {
+  document.getElementById("changePwForm").reset()
+  new bootstrap.Modal(document.getElementById("changePwModal")).show()
+})
+
+document.getElementById("changePwForm").addEventListener("submit", async e => {
+  e.preventDefault()
+  try {
+    await App.changePassword(
+      document.getElementById("oldPassword").value,
+      document.getElementById("newPassword").value
+    )
+    bootstrap.Modal.getInstance(document.getElementById("changePwModal")).hide()
+    App.showToast("Passwort erfolgreich geändert")
+  } catch (err) {
+    App.showToast(err.message, "danger")
+  }
+})
+
+// From user change -> update fee info
+document.getElementById("fromUser").addEventListener("change", () => {
+  const id = parseInt(document.getElementById("fromUser").value)
+  const u = App.users.find(u => u.id === id)
+  if (u) {
+    const fee = u.accountType === "sparkonto" ? "0,50" : "0,25"
+    document.getElementById("feeInfo").textContent = `Überweisungsgebühr: ${fee} € (${u.accountType === "sparkonto" ? "Sparkonto" : "Girokonto"})`
+  }
+})
+
+// Withdraw
+document.getElementById("withdrawUser").addEventListener("change", () => {
+  const id = parseInt(document.getElementById("withdrawUser").value)
+  const users = App.currentUser?.isAdmin ? App.users : [App.currentUser]
+  const u = users.find(u => u.id === id)
+  document.getElementById("withdrawBalance").value = u ? fmt(u.balance) : ""
+})
+
+document.getElementById("withdrawForm").addEventListener("submit", async e => {
+  e.preventDefault()
+  try {
+    const userId = parseInt(document.getElementById("withdrawUser").value)
+    const amount = parseFloat(document.getElementById("withdrawAmount").value)
+    const reason = document.getElementById("withdrawReason").value.trim()
+    if (!userId || !amount) return
+    await App.withdraw(userId, amount, reason)
+    const u = App.currentUser.isAdmin ? App.users.find(u => u.id === userId) : App.currentUser
+    document.getElementById("withdrawBalance").value = u ? fmt(u.balance) : ""
+    App.showToast(`${amount.toFixed(2).replace(".", ",")} € ausgezahlt`)
+    e.target.reset()
+    document.getElementById("withdrawReason").value = "Auszahlung"
+  } catch (err) {
+    App.showToast(err.message, "danger")
+  }
+})
+
+// Deposit
+document.getElementById("depositUser").addEventListener("change", () => {
+  const id = parseInt(document.getElementById("depositUser").value)
+  const u = App.users.find(u => u.id === id)
+  document.getElementById("depositBalance").value = u ? fmt(u.balance) : ""
+})
+
+document.getElementById("depositForm").addEventListener("submit", async e => {
+  e.preventDefault()
+  try {
+    const userId = parseInt(document.getElementById("depositUser").value)
+    const amount = parseFloat(document.getElementById("depositAmount").value)
+    const reason = document.getElementById("depositReason").value.trim()
+    if (!userId || !amount) return
+    await App.deposit(userId, amount, reason)
+    const u = App.users.find(u => u.id === userId)
+    document.getElementById("depositBalance").value = u ? fmt(u.balance) : ""
+    App.showToast(`${amount.toFixed(2).replace(".", ",")} € eingezahlt`)
+    e.target.reset()
+    document.getElementById("depositReason").value = "Einzahlung"
+  } catch (err) {
+    App.showToast(err.message, "danger")
+  }
+})
+
+// Settings
+document.getElementById("settingsForm").addEventListener("submit", async e => {
+  e.preventDefault()
+  try {
+    await App.saveSettings(
+      App._settingsUserId,
+      document.getElementById("settingsAccountType").value,
+      parseFloat(document.getElementById("settingsDailyLimit").value) || 0
+    )
+    bootstrap.Modal.getInstance(document.getElementById("settingsModal")).hide()
+    App.showToast("Einstellungen gespeichert")
+  } catch (err) {
+    App.showToast(err.message, "danger")
+  }
+})
+
+// Statement
+document.getElementById("statementForm").addEventListener("submit", async e => {
+  e.preventDefault()
+  const userId = parseInt(document.getElementById("stmtUser").value)
+  const from = document.getElementById("stmtFrom").value
+  const to = document.getElementById("stmtTo").value
+  if (!userId) return
+  try {
+    await App.loadStatement(userId, from, to)
+  } catch (err) {
+    App.showToast(err.message, "danger")
+  }
+})
+
+// TX Modal table
+const txModalHtml = `
+<div class="modal fade" id="txModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Transaktionen: <span id="txUserName"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <strong>Kontostand:</strong> <span id="txUserBalance" class="fs-5"></span>
+        </div>
+        <table class="table table-sm table-striped mb-0">
+          <thead>
+            <tr><th>Von</th><th>An</th><th>Betrag</th><th>Gebühr</th><th>Verwendungszweck</th><th>Zeit</th></tr>
+          </thead>
+          <tbody id="txTable"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+      </div>
+    </div>
+  </div>
+</div>`
+document.body.insertAdjacentHTML("beforeend", txModalHtml)
+
+App.init()
+;(async function showVersion() {
+  try {
+    const res = await fetch("/api/version")
+    const data = await res.json()
+    document.getElementById("loginVersion").textContent = "v" + data.version
+  } catch {}
+})()
+;(async function autoReload() {
+  let lastTime = 0
+  while (true) {
+    try {
+      const res = await fetch("/api/ping")
+      const data = await res.json()
+      if (lastTime && data.time !== lastTime) { location.reload(); return }
+      lastTime = data.time
+    } catch { /* offline, wait and retry */ }
+    await new Promise(r => setTimeout(r, 1500))
+  }
+})()
+</script>
+</body>
+</html>
