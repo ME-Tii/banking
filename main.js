@@ -64,7 +64,7 @@ async function startApp() {
     },
   })
 
-  mainWindow.loadURL(PUBLIC_URL + "/app")
+  mainWindow.loadURL(PUBLIC_URL + "/app?from=desktop")
   mainWindow.on("closed", () => { mainWindow = null })
 }
 

@@ -589,7 +589,14 @@ function createServer({ dataDir } = {}) {
     }
 
     // Static files
-    let filePath = url.pathname === "/" ? "/download.html" : url.pathname === "/app" ? "/banking.html" : decodeURI(url.pathname)
+    if (url.pathname === "/app" && url.searchParams.get("from") !== "desktop") {
+      res.writeHead(302, { Location: "/" })
+      res.end()
+      return
+    }
+    let filePath = url.pathname === "/" ? "/download.html"
+      : url.pathname === "/app" ? "/banking.html"
+      : decodeURI(url.pathname)
     if (filePath === "/banking.html" && url.pathname !== "/app") {
       res.writeHead(302, { Location: "/" })
       res.end()
