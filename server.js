@@ -589,7 +589,9 @@ function createServer({ dataDir } = {}) {
     }
 
     // Static files
-    if (url.pathname === "/app" && url.searchParams.get("from") !== "desktop") {
+    const host = req.headers.host || ""
+    const isExternal = host.includes("ngrok-free.dev") || host.includes("trycloudflare") || !host.includes("localhost")
+    if (url.pathname === "/app" && isExternal && url.searchParams.get("from") !== "desktop") {
       res.writeHead(302, { Location: "/" })
       res.end()
       return
